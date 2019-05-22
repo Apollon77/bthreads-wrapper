@@ -14,6 +14,8 @@ if (!threads.isMainThread) {
  * @param options Object with settings for the wrapper:
  *                - workerFileName string required Filename of the worker file to use
  *                - proxyEvents boolean, default false should event be proxied too?
+ *                - returnsFactoryFunction boolean, default false, set to true if Wrapped file returns a factory
+ *                  function instead of an object or instance
  * @returns {BThreadsWrapper} object instance to use as wrapper
  */
 function getWorkerClass(options) {
@@ -114,7 +116,8 @@ function getWorkerClass(options) {
     }
 
     /**
-     * Receive events send by the Worker to the Parent and emit them locally directly
+     * Receive events send by the Worker to the Parent and emit them locally directly.
+     * Only works if we have an instance!
      */
     thread.bind('eventCall', (callDetails) => {
         if (!wrappedObject) return;
@@ -144,6 +147,20 @@ function getWorkerClass(options) {
         throw new Error(error);
     });
 
+    if (options.returnsFactoryFunction) {
+        return function (...args) {
+            //console.log('GET ' + propKey + JSON.stringify(args) + ' with meta ' + JSON.stringify(callParameterMetaData));
+            // Send remote call
+            thread.call('methodCall', [{methodName: '__factoryFunction', methodParams: args}]).then((_result) => {
+                //console.log(result);
+            }, (error) => {
+                throw new Error(error);
+            });
+            //console.log('WRAPPER RESULT ' + JSON.stringify(res));
+
+            return new BThreadsWrapper();
+        }
+    }
 
     // Proxy Handler for a normal Object, is handling constructor call too
     let handler = {

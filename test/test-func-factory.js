@@ -13,5 +13,5 @@ if (module && module.parent) {
     module.exports = constructObject;
 } else {
     // or start the instance directly
-    constructObject();
+    constructObject('jup1', 'jup2');
 }

@@ -17,13 +17,55 @@ let workerOptions = {}; // contain the options the worker was initialized with
 
 /**
  * Converts Arguments from an Arguments object into an array
- * @param arguments Arguments object
+ * @param args Arguments object
  * @returns {Array} Arguments as array
  */
 function getArgumentsArray(args) {
     const argArr = [];
     for (let i = 0; i < args.length; i++) argArr.push(args[i]);
     return argArr;
+}
+
+/**
+ * Collect allowed methods from object instance, object (prototype) and EventEmitter
+ * Also needed because ES6 classes and function based instances look slightly different "inside"
+ * @returns {boolean}
+ */
+function registerInstanceMethods() {
+    const props = {};
+    Object.getOwnPropertyNames(obj).forEach(prop => {
+        props[prop] = true;
+    });
+    Object.getOwnPropertyNames(Object.getPrototypeOf( obj )).forEach(prop => {
+        props[prop] = true;
+    });
+    Object.getOwnPropertyNames(EventEmitter).forEach(prop => {
+        props[prop] = true;
+    });
+
+    // re-register all methods allowed to call (now bound to the instance) and put them into global object
+    methods = {};
+    Object.keys(props).forEach(prop => {
+        //console.log(`Prop: ${prop}: ${typeof obj[prop]}  /  ${obj.hasOwnProperty(prop)}`);
+        if (typeof obj[prop] !== 'function') return; // only care about "methods" (no variable access)
+        if (prop.startsWith('_')) return; // handle all methods starting with _ as private and do not alow to be called
+        if (prop !== 'constructor') { // constructor handled here, so do not handle again
+            methods[prop] = obj[prop].bind(obj);
+            //console.log('Register object method ' + prop);
+        }
+    });
+
+    // If we want to proxy Events we need to catch emits to send them to the parent too
+    if (workerOptions.proxyEvents) {
+        const oldEmit = obj.emit;
+        obj.emit = (...args) => {
+            const argArr = getArgumentsArray(args);
+            //console.log('WORKER SEND EVENT ' + JSON.stringify(argArr));
+            parent.fire('eventCall', [{eventArguments: argArr}]);
+            oldEmit.apply(obj, args);
+        };
+    }
+    return true;
 }
 
 /**
@@ -72,41 +114,7 @@ parent.hook('initWorker', (options) => {
             // get Object instance and assign to obj variable
             obj = constructObject(MyClass, arguments);
 
-            // Collect allowed methods from object instance, object (prototype) and EventEmitter
-            // Also needed because ES6 classes and function based instances look slightly different "inside"
-            const props = {};
-            Object.getOwnPropertyNames(obj).forEach(prop => {
-                props[prop] = true;
-            });
-            Object.getOwnPropertyNames(Object.getPrototypeOf( obj )).forEach(prop => {
-                props[prop] = true;
-            });
-            Object.getOwnPropertyNames(EventEmitter).forEach(prop => {
-                props[prop] = true;
-            });
-
-            // re-register all methods allowed to call (now bound to the instance) and put them into global object
-            methods = {};
-            Object.keys(props).forEach(prop => {
-                //console.log(`Prop: ${prop}: ${typeof obj[prop]}  /  ${obj.hasOwnProperty(prop)}`);
-                if (typeof obj[prop] !== 'function') return; // only care about "methods" (no variable access)
-                if (prop.startsWith('_')) return; // handle all methods starting with _ as private and do not alow to be called
-                if (prop !== 'constructor') { // constructor handled here, so do not handle again
-                    methods[prop] = obj[prop].bind(obj);
-                    //console.log('Register object method ' + prop);
-                }
-            });
-
-            // If we want to proxy Events we need to catch emits to send them to the parent too
-            if (options.proxyEvents) {
-                const oldEmit = obj.emit;
-                obj.emit = (...args) => {
-                    const argArr = getArgumentsArray(args);
-                    //console.log('WORKER SEND EVENT ' + JSON.stringify(argArr));
-                    parent.fire('eventCall', [{eventArguments: argArr}]);
-                    oldEmit.apply(obj, args);
-                };
-            }
+            registerInstanceMethods(obj);
 
             return true;
         }
@@ -179,6 +187,17 @@ parent.hook('methodCall', async (callDetails) => {
         }
 
         return {result: null, error: null}; // events do not really have a return value
+    }
+    else if (callDetails.methodName === '__factoryFunction') {
+        console.log('INITIALIZE FACTORY FUNCTION');
+        if (typeof MyClass !== 'function') {
+            return {result: null, error: 'Factory function expected but ' + typeof MyClass + ' found'};
+        }
+        obj = MyClass.apply(null, callDetails.methodParams);
+
+        registerInstanceMethods(obj);
+
+        return {result: true, error: null};
     }
     // Handle method calls for registered methods and catch result
     else if (methods[callDetails.methodName] !== undefined) {

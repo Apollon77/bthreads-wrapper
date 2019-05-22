@@ -2,7 +2,7 @@ const BW = require('./index.js');
 const path = require('path');
 
 // Initialize Wrapped version of test-class (ES6 Class or function style)
-const WrappedClass = BW.getWorkerClass({workerFileName: path.join(__dirname, 'test', 'test-func-return-instance.js'), proxyEvents: true});
+const WrappedClass = BW.getWorkerClass({workerFileName: path.join(__dirname, 'test', 'test-func-factory.js'), proxyEvents: true, returnsFactoryFunction: true});
 
 // Create Wrapped instance of the remote object
 const wrapped = WrappedClass('d1', 'd2');
