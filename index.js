@@ -1,13 +1,9 @@
 /**
  * This file is the main class that implements a wrapper around bthrads worker classes
  */
-const threads = require('bthreads');
+let threads;
 const path = require('path');
 const EventEmitter = require('events');
-
-if (!threads.isMainThread) {
-    throw Error('This file should not be used in a worker environment');
-}
 
 /**
  * Main method of the wrapper called to initialize a wrapped object
@@ -16,6 +12,13 @@ if (!threads.isMainThread) {
  *                - proxyEvents boolean, default false should event be proxied too?
  *                - returnsFactoryFunction boolean, default false, set to true if Wrapped file returns a factory
  *                  function instead of an object or instance
+ *                - workerBackend String, default "worker_threads" if available, else "child_process".
+ *                  Allowed values are:
+ *                  - 'child_process' - spawn a new process as worker
+ *                  - 'worker_threads' - use worker_threads (nodejs >10.5 experimental, >11.7 stable)
+ *                  - 'direct_require' - directly require the file and do not really execute as remote thread/worker
+ *                                       Important: No __destructWrapped method is available!!
+ *                  - 'vm2' - not supported yet :-)
  * @returns {BThreadsWrapper} object instance to use as wrapper
  */
 function getWorkerClass(options) {
@@ -23,6 +26,27 @@ function getWorkerClass(options) {
 
     if (typeof options === 'string') {
         options = {workerFileName: options};
+    }
+
+    if (options.workerBackend) {
+        if (options.workerBackend === 'child_process') {
+            threads = require('bthreads/process');
+        }
+        else if (options.workerBackend === 'worker_threads') {
+            threads = require('bthreads/threads');
+        }
+        else if (options.workerBackend === 'direct_require') {
+            return require(options.workerFileName);
+        }
+        else if (options.workerBackend === 'vm2') {
+
+        }
+    }
+    if (!threads) {
+        threads = require('bthreads');
+    }
+    if (!threads.isMainThread) {
+        throw Error('This file should not be used in a worker environment');
     }
 
     //console.log(threads.backend);
