@@ -18,7 +18,8 @@ const EventEmitter = require('events');
  *                  - 'worker_threads' - use worker_threads (nodejs >10.5 experimental, >11.7 stable)
  *                  - 'direct_require' - directly require the file and do not really execute as remote thread/worker
  *                                       Important: No __destructWrapped method is available!!
- *                  - 'vm2' - not supported yet :-)
+ *                  - 'vm2' - execute the file in vm2, so encapsulated
+ *                            Important: No __destructWrapped method is available!!
  * @returns {BThreadsWrapper} object instance to use as wrapper
  */
 function getWorkerClass(options) {
@@ -39,6 +40,22 @@ function getWorkerClass(options) {
             return require(options.workerFileName);
         }
         else if (options.workerBackend === 'vm2') {
+            try {
+                const {NodeVM} = require('vm2');
+
+                const vm = new NodeVM({
+                    console: 'inherit',
+                    sandbox: {},
+                    require: true,
+                    nesting: true
+                });
+
+                wrappedObject = vm.run(fs.readFileSync(file));
+                return wrappedObject;
+            }
+            catch(error) {
+                throw new Error(error);
+            }
 
         }
     }

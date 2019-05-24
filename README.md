@@ -89,7 +89,8 @@ Supported keys in options are:
 * **workerBackend**: String, optional, Lets you choose the worker backend to use. Default is to use nodejs worker_threads if available, else child_process. The allowed options are:
   * 'child_process' - spawn a new process as worker
   * 'worker_threads' - use worker_threads (nodejs >10.5 experimental, >11.7 stable)
-  * 'direct_require' - directly require the file and do not really execute as remote thread/worker. **Important: No __destructWrapped method is available!!**
+  * 'direct_require' - directly require the file locally. **Important: No __destructWrapped method is available!!**
+  * 'vm2' - evaluate the file in a vm2 context locally. **Important: No __destructWrapped method is available!!**
 
 ### WrappedObject.__destructWrapped()
 This is a specially defined method name that exists on the object and can be called to destroy the worker. The object renders unusable after this so do not use it afterwards!
