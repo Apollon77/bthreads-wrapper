@@ -48,7 +48,7 @@ class TestClass extends EventEmitter {
         callback1 && callback1(this.data1);
     }
 
-    getDataAsync() {
+    getData1Async() {
         console.log('WORKER-DATA1ASYNC');
         return new Promise((resolve, _reject) => {
             console.log('RESOLVE NOW');
