@@ -28,6 +28,8 @@ You can locally use the object as you normally would. If it is a singleton style
 
 The library will forward all those calls (constructors and also all other method/function calls) including the arguments you provided to the worker process and apply the same there on that object. The results are send back to the parent thread and are returned. For results also returned Promises are detected and fullfills/rejects are also catched and returned.
 
+The library is also checking for callback-functions as call arguments, will detect and also have functions on the worker side. Calls to those functions are also catched on the worker side and will be also executed on parent side once the method result is returned. 
+
 **Here the only important compatibility issue comes up: All results are provided asynchronously as Promise or async/await because of the fact that the communication to the worker is asynchronous. So this is the only thing where you local object may behave different if it is not based on Promises.**
 
 Additionally to method/function calls the library also supports to forward and receive Events via EventEmitter. This means that Events can be emitted by the parent and are fired on the worker instance of the object and also can be fired by the worker and subscribed/received by the parent. Here the asynchronous topic is not existing because events don't care about that.
@@ -95,8 +97,10 @@ Supported keys in options are:
 ### WrappedObject.__destructWrapped()
 This is a specially defined method name that exists on the object and can be called to destroy the worker. The object renders unusable after this so do not use it afterwards!
 
-## Status of this work
+## Status of this work and Limitations
 Basically it is in experimental state right now and was a prove of concept ... let's see how it continues :-)
+
+Limitations are basically the ones listed on https://github.com/chjj/bthreads#caveats when it comes to child_process and worker_threads (Browser stuff not relevant here). Some limitations are handled by this library (e.g. returning Promises, Error objects and having functions as arguments).
 
 ## Credits
 This library is based on the great work of the bthreads library as basis and would had been much harder without this work.
