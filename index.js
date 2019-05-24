@@ -4,6 +4,7 @@
 let threads;
 const path = require('path');
 const EventEmitter = require('events');
+const fs = require('fs');
 
 /**
  * Main method of the wrapper called to initialize a wrapped object
@@ -46,11 +47,15 @@ function getWorkerClass(options) {
                 const vm = new NodeVM({
                     console: 'inherit',
                     sandbox: {},
-                    require: true,
-                    nesting: true
+                    require: {
+                        external: true,
+                        builtin: ['*']
+                    },
+                    nesting: true,
+                    //wrapper: 'none'
                 });
 
-                wrappedObject = vm.run(fs.readFileSync(file));
+                wrappedObject = vm.run(fs.readFileSync(options.workerFileName), options.workerFileName);
                 return wrappedObject;
             }
             catch(error) {

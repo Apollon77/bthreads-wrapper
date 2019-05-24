@@ -189,7 +189,7 @@ parent.hook('methodCall', async (callDetails) => {
         return {result: null, error: null}; // events do not really have a return value
     }
     else if (callDetails.methodName === '__factoryFunction') {
-        console.log('INITIALIZE FACTORY FUNCTION');
+        //console.log('INITIALIZE FACTORY FUNCTION');
         if (typeof MyClass !== 'function') {
             return {result: null, error: 'Factory function expected but ' + typeof MyClass + ' found'};
         }
